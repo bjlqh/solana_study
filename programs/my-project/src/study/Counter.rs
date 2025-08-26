@@ -1,0 +1,126 @@
+use anchor_lang::prelude::*;
+
+pub const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
+
+pub const COUNTER_ACCOUT_SPACE: usize = ANCHOR_DISCRIMINATOR_SIZE + 8;
+
+// This is your program's public key and it will update
+// automatically when you build the project.
+declare_id!("4zhzFF4mhTFvbhJvFxFPFBkEHEMLiZmte5hAWWswfjME");
+
+#[program]
+mod simple_counter {
+    /**
+     * 表示导入上一级作用域的所有内容。super:上一级作用域,*:导入所有.
+     * 我们在外层定义了:use anchor_lang::prelude::*;
+     * 如果不写 use super::*，模块内部就不能直接使用 Context、Result、Account、Signer 等 Anchor 类型
+     */
+    use super::*;
+
+    //初始化计数器
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        /**
+         * 在Rust 里，&mut 表示 可变引用（mutable reference）。
+         * ctx.accounts.counter 是一个 账户（Account<'info, Counter>）。
+         * 如果不用 &mut，Rust 会认为我们只想读取数据，修改会报错。
+         * 有了 &mut，我们可以安全地修改账户里的状态，比如更新 count。
+         * 但是 Rust 更严格，必须显式告诉编译器“我会改数据”，所以写 &mut。
+         */
+        let counter_account = &mut ctx.accounts.counter;
+        counter_account.count = 0;
+        msg!("Counter initialized to 0 at {}", counter_account.key());
+        Ok(())
+    }
+
+    // 自增计数器
+    pub fn increment(ctx: Context<Increment>) -> Result<()> {
+        let counter_account = &mut ctx.accounts.counter;
+        counter_account.count += 1;
+        msg!("Counter incremented to {}", counter_account.count);
+        Ok(())
+    }
+}
+
+/**
+ * #[account] 这个是Anchor的宏，用来定义一个PDA账户或普通账户的数据结构。
+ * Anchor 会自动为它：
+ *   1.添加 8 字节的 账户鉴别符（discriminator）
+ *   2.在链上序列化 / 反序列化
+ *   3.提供方便的 Account<'info, Counter> 类型访问
+ * 如果没有 #[account]，Anchor 不知道如何把 Counter 绑定到 Solana 上的账户数据。
+ */
+// PDA 账户数据结构
+#[account]
+pub struct Counter {
+    pub count: u64,
+}
+
+// initialize指令所需账户
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+
+    /**
+     * 这是 Anchor 的账户约束宏，作用是自动管理账户的创建和校验。
+     * init_if_needed:如果账户不存在 → 自动创建。如果已经存在 → 跳过创建。
+     *      常用于 PDA（Program Derived Account，程序派生账户）
+     *      如果只写 init，那么如果账户已存在会报错。
+     * payer = user:创建账户的费用由 user(签名者) 支付。
+     * space = COUNTER_ACCOUT_SPACE:账户占用的空间大小。
+     * seeds = [b"counter", user.key().as_ref()]:PDA 种子，用于生成账户的公钥:seeds + program_id
+     *      固定字符串 b"counter" = 程序的命名空间。
+     *         在 Rust 中，b"..." 表示字节字符串。b"counter" → &[u8; 7]
+     *         因为 PDA seeds 必须是 原始字节序列，Solana 底层是哈希运算，不能直接用 UTF-8 字符串。
+     *         所以必须写 b"counter"。
+     *      user.key().as_ref() = 用户的公钥
+     * bump: 是 PDA 的“冲突解决参数”，用来确保 PDA 可用。
+             如果某个 seeds 组合第一次算出来的地址无效，Anchor 会尝试调整 bump 值直到找到可用地址。
+     */
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = COUNTER_ACCOUT_SPACE,
+        seeds = [b"counter", user.key().as_ref()],
+        bump
+    )]
+    pub counter: Account<'info, Counter>,
+
+    /**
+     * 表示这个账户会被修改。
+     * 如果不写 mut：
+     *      你只能读取账户数据
+     *      修改 counter.count 会报错
+     * 在 Anchor 中，修改账户必须显式声明 mut，否则会安全性报错。
+     */
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+
+    /**
+     * 这是 Solana 内置的 System Program，负责：
+     *      创建账户、转账 SOL、分配内存、关闭账户
+     * 什么时候需要加？
+     *      如果账户需要初始化 → 必须加
+     *      如果只是读取或更新现有账户 → 可以不加
+     * 因为创建 PDA 账户需要调用系统程序。所以在Initialize当中必须加
+     */
+    pub system_program: Program<'info, System>,
+}
+
+// increment指令所需账户
+#[derive(Accounts)]
+pub struct Increment<'info> {
+    #[account(
+        mut,
+        seeds = [b"counter", user.key().as_ref()],
+        bump
+    )]
+    pub counter: Account<'info, Counter>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    /**
+     * 在 increment 中没有账户初始化，所以不需要 system_program。
+     */
+    //pub system_program: Program<'info, System>,
+}
