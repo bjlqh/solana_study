@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
 use anchor_lang::prelude::*;
 
 pub const ANCHOR_DISCRIMINATOR_SIZE: usize = 8;
@@ -7,7 +9,7 @@ pub const COUNTER_ACCOUNT_SPACE: usize = ANCHOR_DISCRIMINATOR_SIZE + 8;
 
 // This is your program's public key and it will update
 // automatically when you build the project.
-declare_id!("4zhzFF4mhTFvbhJvFxFPFBkEHEMLiZmte5hAWWswfjME");
+declare_id!("TfGPfnacq4bDuAiYvbZEYbqLHFwu9BvCa1q7Jzr5cpH");
 
 #[program]
 mod simple_counter {
