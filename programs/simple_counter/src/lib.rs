@@ -19,6 +19,9 @@ mod simple_counter {
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         let counter_account = &mut ctx.accounts.counter;
         counter_account.count = 0;
+        emit!(InitEvent {
+            user: *ctx.accounts.user.key
+        });
         msg!("Counter initialized to 0 at {}", counter_account.key());
         Ok(())
     }
@@ -27,9 +30,26 @@ mod simple_counter {
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter_account = &mut ctx.accounts.counter;
         counter_account.count += 1;
+        emit!(
+            IncrEvent {
+                user: *ctx.accounts.user.key,
+                value: counter_account.count
+            }
+        );
         msg!("Counter incremented to {}", counter_account.count);
         Ok(())
     }
+}
+
+#[event]
+pub struct InitEvent {
+    pub user: Pubkey,
+}
+
+#[event]
+pub struct IncrEvent {
+    pub user: Pubkey,
+    pub value: u64,
 }
 
 // PDA 账户数据结构
@@ -69,7 +89,6 @@ pub struct Increment<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 }
-
 
 //test
 #[cfg(test)]
