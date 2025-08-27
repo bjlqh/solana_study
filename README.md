@@ -1,8 +1,15 @@
 
 # solana cli
+
+## 账户切换
+> solana config set --ul
+> solswitch id
+
 ## 交易
 >solana transfer 671evgaqkrPYvrDm3pHyQSxTZq4H4dEkU3guFYcfGgJd 1 --allow-unfunded-recipient
 
+## 查看账户余额
+>solana account FndYRfD9xxnJWxoUjnCpTdQvFvNqUgHJ7MdxHgSoMg8H -u localhost
 
 
 # Anchor框架项目结构
